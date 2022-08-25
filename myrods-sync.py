@@ -9,7 +9,7 @@ PROGRAM_NAME = 'YodaSync'
 PROGRAM_VERSION = '0.3'
 CSS_FILE = 'myrods-sync.css'
 LOGO_FILE = 'UU_logo_2021_EN_RGB_transparant.png'
-ZONELIST_LOCATION = '~/git/myrods-sync/irods_zones_prd.json'
+ZONELIST_FILE = 'irods_zones_prd.json'
 DEBUG = False
 
 import gi
@@ -35,7 +35,7 @@ def main(opts, args):
           'program_directory': program_dir,
           'css_path'         : program_dir + '/' + CSS_FILE,
           'logo_path'        : program_dir + '/' + LOGO_FILE,
-          'zonelist_location': ZONELIST_LOCATION,
+          'zonelist_location': program_dir + '/' + ZONELIST_FILE,
           'opts' : opts,
           'args' : args
           }

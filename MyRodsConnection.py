@@ -168,6 +168,10 @@ class MyRodsConnection():
         if env == None:
             return False
         try:
+            os.mkdir(os.path.expanduser('~/.irods'), mode=0o700)
+        except:
+            pass
+        try:
             with open(self.irods_env_file, 'wt') as f:
                 json.dump(env, f,indent=4)
             return True
