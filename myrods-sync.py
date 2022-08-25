@@ -10,7 +10,7 @@ PROGRAM_VERSION = '0.3'
 CSS_FILE = 'myrods-sync.css'
 LOGO_FILE = 'UU_logo_2021_EN_RGB_transparant.png'
 ZONELIST_FILE = 'irods_zones_prd.json'
-DEBUG = False
+DEBUG = True
 
 import gi
 import os

@@ -54,11 +54,44 @@ class MainBox(Gtk.Box):
         self.add(header)
 
         # center section: show data locations and run button
+        #   grid row 0 shows labels above fields for local and remote locations
+        #   grid row 1 shows: 
+        #   local selected / synchronization direction / remote selected / run button
+        #       col 0            col 1                     col 2             col 3
+
+        # create row 0 widgets:
+        self.label_local = Gtk.Label()
+        self.label_local.set_markup('<b>Workspace folder</b>')
+        self.label_remote = Gtk.Label()
+        self.update_remote_host_label()
+
+        # create row 1 widgets for the 4 cells: local / sync / remote / run-now
+        self.local_folder = self.widget_clicklabel('local folder')
+        self.local_folder.completed = False
+        self.local_folder.connect("clicked", self.on_local_folder_clicked)
+
+        self.sync_type = self.widget_synctype_selector()
+
+        self.remote_folder = self.widget_clicklabel('Yoda/iRODS folder')
+        self.remote_folder.completed = False
+        self.remote_folder.connect("clicked", self.on_irods_folder_clicked)
+
+        self.run_now = Gtk.Button(label = 'Run!', border_width = 20)
+        self.run_now.set_sensitive(False)
+        self.run_now.connect("clicked", self.on_run_now_clicked)
+
+        # create grid and add row 0 widgets to it
         grid = Gtk.Grid()
-        self.h_grid = grid
-        self.h_grid_rows = 0
-        self.add_grid_header()
-        self.add_grid_row()
+        grid.attach(self.label_local, 0, 0, 1, 1)
+        grid.attach(self.label_remote, 2, 0, 1, 1)
+
+        # add row 1 widgets to grid
+        grid.attach(self.local_folder, 0, 1, 1, 1)
+        grid.attach(self.sync_type, 1, 1, 1, 1)
+        grid.attach(self.remote_folder, 2, 1, 1, 1)
+        grid.attach(self.run_now, 3, 1, 1, 1)
+
+        # add the grid to the main box
         self.add(grid)
 
 
@@ -99,11 +132,16 @@ class MainBox(Gtk.Box):
         if response == Gtk.ResponseType.OK:
             widget.set_label(dialog.get_filename())
             widget.completed = True
+            self.update_run_now()
+
         dialog.destroy()
 
     def on_irods_folder_clicked(self, widget):
         if not self.authenticated_after_optional_dialog():
+            self.reset_remote_folder()
+            self.update_remote_host_label()
             return
+        self.update_remote_host_label()
         self.select_collection_dialog(widget)
 
 
@@ -124,7 +162,6 @@ class MainBox(Gtk.Box):
 
                 if self.irods.session != None:
                     # authentication was successful
-                    self.update_remote_host_label()
                     need_configuration_from_user = False
                 else:
                     title = 'authentication failed, please retry'
@@ -143,22 +180,15 @@ class MainBox(Gtk.Box):
         dataStore.load_iRODS_collections()
      
         dialog = IrodsChooserDialog(dataStore.get_store())
-        done = False
-        while not done:
+        dialog_done = False
+        while not dialog_done:
             response = dialog.run()
-            done = True
+            dialog_done = True   
             irods_path = dialog.get_selection()
         
-            if response == Gtk.ResponseType.OK:
-                if irods_path is not None:
-                    # show selected collection on button in main window
-                    widget.set_label(irods_path)
-                    widget.path_prefix = dataStore.get_path_prefix()
-                    widget.completed = True
-            
             if response == 500 and irods_path is not None: 
-                # create button pressed and a collection is selected
-                done = False
+                # we're not done yet, user want to create a collection
+                dialog_done = False
                 create_dialog = EntryDialog(self.parent, 'Create', 'Enter name of sub-collection')
                 create_response = create_dialog.run()
                 if create_response == Gtk.ResponseType.OK:
@@ -175,26 +205,43 @@ class MainBox(Gtk.Box):
                             pass
                 create_dialog.destroy()
 
+            if response == Gtk.ResponseType.OK:
+                if irods_path is not None:
+                    # user has selected a collection
+
+                    # show selected collection on button in main window
+                    widget.set_label(irods_path)
+                    widget.path_prefix = dataStore.get_path_prefix()
+                    self.remote_folder.completed = True
+                    self.update_run_now()
+
         dialog.destroy()
 
 
 
     def on_disconnect(self):
         self.irods.session = self.irods.session.cleanup()
+        self.reset_remote_folder()
         self.update_remote_host_label()
 
 
     def on_run_now_clicked(self, widget):
         # only act if both local and remote folders are known
-        if widget.h_local_folder.completed and widget.h_remote_folder.completed:
+        if self.local_folder.completed and self.remote_folder.completed:
             # print('local folder is :' + widget.h_local_folder.get_label())
             # print('remote folder is:' + widget.h_remote_folder.get_label())
             cmd = self.build_run_command(
-                widget.h_local_folder.get_label(),
-                widget.h_remote_folder.path_prefix + widget.h_remote_folder.get_label(),
-                widget.h_sync_type.get_active()
+                self.local_folder.get_label(),
+                self.remote_folder.path_prefix + self.remote_folder.get_label(),
+                self.sync_type.get_active()
                 )
             log = LogWindow(cmd, 'Synchronization log')
+
+
+    def reset_remote_folder(self):
+        self.remote_folder.set_label(EMPTY_SELECTION + 'Yoda/iRODS folder')
+        self.remote_folder.completed = False
+        self.update_run_now()
 
 
     def update_remote_host_label(self):
@@ -204,44 +251,9 @@ class MainBox(Gtk.Box):
         else:
             self.label_remote.set_markup('<b>Not yet connected</b>')
 
-
-
-    def add_grid_header(self):
-        label_local = Gtk.Label()
-        label_local.set_markup('<b>Workspace folder</b>')
-        self.label_remote = Gtk.Label()
-        self.update_remote_host_label()
-        row = self.h_grid_rows
-        self.h_grid.attach(label_local, 0, row, 1, 1)
-        self.h_grid.attach(self.label_remote, 2, row, 1, 1)
-        self.h_grid_rows = row + 1
- 
-
-    def add_grid_row(self):
-        # create widgets for the 4 cells: local / sync / remote / run-now
-        local_folder = self.widget_clicklabel('local folder')
-        local_folder.completed = False
-        local_folder.connect("clicked", self.on_local_folder_clicked)
-
-        sync_type = self.widget_synctype_selector()
-
-        remote_folder = self.widget_clicklabel('Yoda/iRODS folder')
-        remote_folder.completed = False
-        remote_folder.connect("clicked", self.on_irods_folder_clicked)
-
-        run_now = Gtk.Button(label = 'Run!', border_width = 20)
-        run_now.h_local_folder = local_folder
-        run_now.h_remote_folder= remote_folder
-        run_now.h_sync_type = sync_type
-        run_now.connect("clicked", self.on_run_now_clicked)
-
-        # place the created widgets in the grid cells of a new row
-        row = self.h_grid_rows     # get current # of rows
-        self.h_grid.attach(local_folder, 0, row, 1, 1)
-        self.h_grid.attach(sync_type, 1, row, 1, 1)
-        self.h_grid.attach(remote_folder, 2, row, 1, 1)
-        self.h_grid.attach(run_now, 3, row, 1, 1)
-        self.h_grid_rows = row + 1
+    def update_run_now(self):
+        self.run_now.set_sensitive(
+                self.local_folder.completed and self.remote_folder.completed)
 
      
     def build_run_command(self, local, remote, sync):
