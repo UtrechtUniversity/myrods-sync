@@ -32,7 +32,8 @@ class IrodsLoginDialog(Gtk.Dialog):
         label_user = self.make_label('Username ')
         label_password = self.make_label('(access) Password ')
 
-        self.combo_service = EntryCombo(services, active)
+        # TODO: utilize entry of combo box
+        self.combo_service = EntryCombo(entries=services, active=active, has_entry=False)
         self.entry_user = Gtk.Entry()
         self.entry_user.set_placeholder_text('yourname@uu.nl')
         self.entry_password = Gtk.Entry()

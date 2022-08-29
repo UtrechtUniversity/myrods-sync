@@ -15,18 +15,24 @@ import gi
 from gi.repository import Gtk
 
 class EntryCombo(Gtk.ComboBox):
-    def __init__(self, entries, active=None):
-        super().__init__(has_entry=True)
+    def __init__(self, entries, active=None, has_entry=True):
+        Gtk.ComboBox.__init__(self,has_entry=has_entry)
         store = Gtk.ListStore(str,str)
         for key in entries:
             store.append( [entries[key], key] )
         self.set_model(store)
+        renderer = Gtk.CellRendererText()
+        self.pack_start(renderer, True)
+        self.add_attribute(renderer,"text",1)
         self.set_entry_text_column(1)
-        auto_complete = Gtk.EntryCompletion()
-        auto_complete.set_model(store)
-        auto_complete.set_text_column(1)
-        entry = self.get_child()
-        entry.set_completion(auto_complete)
+        if has_entry:
+            auto_complete = Gtk.EntryCompletion()
+            auto_complete.set_model(store)
+            auto_complete.set_text_column(1)
+            entry = self.get_child()
+            entry.set_completion(auto_complete)
+        else:
+            self.set_active(0)
         if active != None:
             for i, entry in enumerate(store):
                 if entry[1] == active:
