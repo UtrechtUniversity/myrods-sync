@@ -259,9 +259,10 @@ class MainBox(Gtk.Box):
     def build_run_command(self, local, remote, sync):
         done = ';echo "-- END OF LOG --"'
         cmd = 'irsync -r -v '
+        qq = "'"
         if sync == 0:
-            cmd = cmd + local + '  i:' + remote
+            cmd = cmd + qq + local + qq + ' ' + qq + 'i:' + remote + qq
         if sync == 1:
-            cmd = cmd + 'i:' + remote + '  ' + local
+            cmd = cmd + qq + 'i:' + remote + qq + ' ' + qq + local + qq
         return cmd + ';echo "DONE!"'
 
